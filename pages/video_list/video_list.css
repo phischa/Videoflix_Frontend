@@ -1,3 +1,7 @@
+body {
+    overflow-x: hidden;
+}
+
 
 .main_header {
     z-index: 1;

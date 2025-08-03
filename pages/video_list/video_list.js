@@ -125,8 +125,8 @@ function handleResolutionChange(event) {
         }
         
         showToastMessage(false, [
-            `🔄 Auto-detection enabled`,
-            `📱 ${screenInfo}: ${optimalQuality}`
+            `Auto-detection enabled`,
+            `${screenInfo}: ${optimalQuality}`
         ]);
     } else {
         // Manual resolution selection
@@ -136,7 +136,7 @@ function handleResolutionChange(event) {
             loadVideoInOverlay(currentVideo, currentResolution);
         }
         
-        showToastMessage(false, [`📺 Manual quality: ${selectedValue}`]);
+        showToastMessage(false, [`Manual quality: ${selectedValue}`]);
     }
 }
 
@@ -177,12 +177,6 @@ function setupInitialVideo() {
         
         // Update current resolution for UI
         currentResolution = optimalQuality;
-        
-        // Show user what was detected
-        showToastMessage(false, [
-            `${screenInfo} detected`, 
-            `Auto-selected: ${optimalQuality}`
-        ]);
     }
 }
 
