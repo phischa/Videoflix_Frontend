@@ -65,7 +65,6 @@
                 <img src="/assets/icons/arrow_back.svg"  onclick="closeVideoOverlay()" alt="">
                 <h1 id="overlayTitle">Video Titel</h1>
                 <img src="/assets/icons/logo_icon_small.svg" alt="">
-
             </div>
             <div class="video-wrapper">
                 <video id="overlayVideo" controls></video>
@@ -73,9 +72,11 @@
             <div class="overlay-controls">
                 <label for="setResolution">Resolution:</label>
                 <select id="setResolution">
-                    <option value="480p" selected>480p</option>
-                    <option value="720p">720p</option>
+                    <option value="auto">Auto (Screen Detection)</option>
                     <option value="1080p">1080p</option>
+                    <option value="720p">720p</option>
+                    <option value="480p">480p</option>
+                    <option value="360p">360p</option>
                 </select>
             </div>
         </div>

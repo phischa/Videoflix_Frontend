@@ -1,5 +1,61 @@
+// ==============================
+// VARIABLES & INITIALIZATION
+// ==============================
+
 let overlayHls = null;
 let NEWEST = document.getElementById('newest')
+
+// ==============================
+// SCREEN RESOLUTION DETECTION  
+// ==============================
+
+/**
+ * Detects optimal video quality based on user's screen resolution.
+ * @returns {string} The recommended video resolution (e.g., '720p').
+ */
+function detectOptimalQuality() {
+    const screenWidth = window.screen.width;
+    const screenHeight = window.screen.height;
+    const devicePixelRatio = window.devicePixelRatio || 1;
+    
+    // Calculate effective resolution
+    const effectiveWidth = screenWidth * devicePixelRatio;
+    const effectiveHeight = screenHeight * devicePixelRatio;
+    
+    // Quality selection based on screen resolution (Checkliste-konform)
+    if (effectiveHeight >= 2160) {
+        return '1080p'; // 4K+ screens → 1080p (optimal bandwidth)
+    } else if (effectiveHeight >= 1440) {
+        return '1080p'; // 2K screens → 1080p
+    } else if (effectiveHeight >= 1080) {
+        return '720p';  // Full HD screens → 720p (perfect quality/bandwidth ratio)
+    } else if (effectiveHeight >= 720) {
+        return '720p';  // HD screens → 720p
+    } else if (effectiveHeight >= 480) {
+        return '480p';  // Standard definition → 480p
+    } else {
+        return '480p';  // Small screens (phones)
+    }
+}
+
+/**
+ * Gets user-friendly description of detected screen resolution.
+ * @returns {string} Description of the screen type.
+ */
+function getScreenDescription() {
+    const screenHeight = window.screen.height * (window.devicePixelRatio || 1);
+    
+    if (screenHeight >= 2160) return "4K Display";
+    if (screenHeight >= 1440) return "2K Display"; 
+    if (screenHeight >= 1080) return "Full HD Display";
+    if (screenHeight >= 720) return "HD Display";
+    if (screenHeight >= 480) return "Standard Display";
+    return "Mobile Display";
+}
+
+// ==============================
+// UTILITY FUNCTIONS
+// ==============================
 
 /**
  * Scrolls a video list container horizontally.
@@ -14,6 +70,10 @@ function scrollHorizontally(button, amount) {
         left: amount, behavior: 'smooth'
     });
 }
+
+// ==============================
+// INITIALIZATION FUNCTIONS
+// ==============================
 
 /**
  * Initializes the video list and UI elements on page load.
@@ -44,15 +104,45 @@ function initEventListeners() {
 }
 
 /**
- * Handles video resolution changes from the dropdown.
- * @param {Event} event - The change event.
+ * Enhanced handleResolutionChange with auto-detection support.
  */
 function handleResolutionChange(event) {
-    currentResolution = event.target.value;
-    if (currentVideo && document.getElementById('overlay').style.display === 'flex') {
-        loadVideoInOverlay(currentVideo, currentResolution);
+    const selectedValue = event.target.value;
+    
+    if (selectedValue === 'auto') {
+        // Re-detect optimal quality
+        const optimalQuality = detectOptimalQuality();
+        const screenInfo = getScreenDescription();
+        
+        currentResolution = optimalQuality;
+        
+        // Update dropdown to show actual detected quality
+        event.target.value = optimalQuality;
+        
+        // Reload video with detected quality if overlay is open
+        if (currentVideo && document.getElementById('overlay').style.display === 'flex') {
+            loadVideoInOverlay(currentVideo, optimalQuality);
+        }
+        
+        showToastMessage(false, [
+            `🔄 Auto-detection enabled`,
+            `📱 ${screenInfo}: ${optimalQuality}`
+        ]);
+    } else {
+        // Manual resolution selection
+        currentResolution = selectedValue;
+        
+        if (currentVideo && document.getElementById('overlay').style.display === 'flex') {
+            loadVideoInOverlay(currentVideo, currentResolution);
+        }
+        
+        showToastMessage(false, [`📺 Manual quality: ${selectedValue}`]);
     }
 }
+
+// ==============================
+// DATA LOADING & SETUP
+// ==============================
 
 /**
  * Loads videos from the backend and sets up the UI.
@@ -72,12 +162,27 @@ async function loadAndSetupVideos() {
 }
 
 /**
- * Sets the initial video on page load.
+ * Enhanced setupInitialVideo with automatic quality detection.
  */
 function setupInitialVideo() {
     if (VIDEOS && VIDEOS.length > 0) {
         currentVideo = VIDEOS[0].id;
-        loadVideo(VIDEOS[0].id, '480p');
+        
+        // Auto-detect optimal quality based on screen resolution
+        const optimalQuality = detectOptimalQuality();
+        const screenInfo = getScreenDescription();
+        
+        // Load video with detected quality
+        loadVideo(VIDEOS[0].id, optimalQuality);
+        
+        // Update current resolution for UI
+        currentResolution = optimalQuality;
+        
+        // Show user what was detected
+        showToastMessage(false, [
+            `${screenInfo} detected`, 
+            `Auto-selected: ${optimalQuality}`
+        ]);
     }
 }
 
@@ -103,13 +208,12 @@ function setStartVideo() {
     document.getElementById('videoDescription').innerHTML = VIDEOS[0].description;
 }
 
+// ==============================
+// VIDEO RENDERING FUNCTIONS
+// ==============================
+
 /**
  * Dynamically renders all video sections: first the "Newest" section, then all other categories.
- * It collects unique categories from the VIDEOS array, removes existing dynamic sections,
- * and creates new sections grouped by category.
- *
- * @async
- * @function
  */
 async function renderVideosDynamically() {
     const container = document.querySelector('.list_section');
@@ -129,10 +233,6 @@ async function renderVideosDynamically() {
 
 /**
  * Renders the "Newest" video section.
- * Clears the existing content and appends each video from LATESTVIDEOS
- * using the `videoTemplate` function.
- *
- * @function
  */
 function renderNewestSection() {
     NEWEST.innerHTML = '';
@@ -143,10 +243,7 @@ function renderNewestSection() {
 
 /**
  * Removes all dynamically generated category sections from the given container.
- *
  * @param {HTMLElement} container - The parent element containing video sections.
- *
- * @function
  */
 function clearDynamicSections(container) {
     [...container.querySelectorAll('.video_list.dynamic-category')].forEach(el => el.remove());
@@ -154,12 +251,9 @@ function clearDynamicSections(container) {
 
 /**
  * Creates a section element for a specific video category, including a heading and video list.
- *
  * @param {string} cat - The category name (in lowercase).
  * @param {Object[]} videos - An array of video objects belonging to this category.
  * @returns {HTMLElement} - The constructed <section> DOM element.
- *
- * @function
  */
 function renderCategorySection(cat, videos) {
     const section = document.createElement('section');
@@ -210,8 +304,15 @@ function showVideo(id) {
     document.getElementById('videoDescription').innerHTML = video.description;
     document.getElementById('playButton').setAttribute("onclick", `playVideo(${id})`)
     currentVideo = id
-    loadVideo(id, '480p');
+    
+    // Use auto-detected quality
+    const optimalQuality = detectOptimalQuality();
+    loadVideo(id, optimalQuality);
 }
+
+// ==============================
+// TOKEN REFRESH FUNCTIONS
+// ==============================
 
 /**
  * Starts an interval that refreshes the JWT token every 20 minutes.
@@ -232,6 +333,10 @@ async function doRefresh() {
         }, credentials: 'include',
     })
 }
+
+// ==============================
+// VIDEO PLAYBACK FUNCTIONS
+// ==============================
 
 /**
  * Loads and plays a video using HLS.js.
@@ -260,6 +365,141 @@ function loadVideo(id, resolution) {
         console.error("HLS error:", data);
     });
 }
+
+/**
+ * Loads a video in the overlay using HLS.js.
+ * @param {number} id - The video ID.
+ * @param {string} resolution - The desired resolution.
+ */
+function loadVideoInOverlay(id, resolution) {
+    if (overlayHls) {
+        overlayHls.destroy();
+    }
+
+    overlayHls = new Hls({
+        xhrSetup: function (xhr) {
+            xhr.withCredentials = true
+        }
+    });
+
+    overlayHls.loadSource(`${API_BASE_URL}${URL_TO_INDEX_M3U8(id, resolution)}`);
+    overlayHls.attachMedia(overlayVideoContainer);
+
+    overlayHls.on(Hls.Events.MANIFEST_PARSED, () => {
+        overlayVideoContainer.play().catch(() => {
+            console.log("User interaction required to start overlay playback");
+        });
+    });
+
+    overlayHls.on(Hls.Events.ERROR, (event, data) => {
+        console.error("Overlay HLS error:", data);
+    });
+}
+
+/**
+ * Enhanced openVideoOverlay with automatic quality detection.
+ */
+function openVideoOverlay(videoId, resolution) {
+    const video = VIDEOS.find(video => video.id == videoId);
+    if (!video) return;
+
+    hideHeader();
+    const overlay = document.getElementById('overlay');
+    overlay.style.display = 'flex';
+    document.body.classList.add('overlay-open');
+    document.getElementById('overlayTitle').innerHTML = video.title;
+    
+    // Determine quality: use provided resolution or auto-detect
+    let selectedQuality;
+    if (resolution && resolution !== 'auto') {
+        selectedQuality = resolution;
+    } else {
+        // Auto-detect optimal quality
+        selectedQuality = detectOptimalQuality();
+        const screenInfo = getScreenDescription();
+        
+        showToastMessage(false, [
+            `${screenInfo}`, 
+            `Auto-quality: ${selectedQuality}`
+        ]);
+    }
+    
+    // Update resolution dropdown
+    const resolutionSelect = document.getElementById('setResolution');
+    if (resolutionSelect) {
+        resolutionSelect.value = selectedQuality;
+    }
+    
+    currentVideo = videoId;
+    currentResolution = selectedQuality;
+    
+    loadVideoInOverlay(videoId, selectedQuality);
+    document.body.style.overflow = 'hidden';
+}
+
+/**
+ * Closes the overlay video player and resets the UI.
+ */
+function closeVideoOverlay() {
+    const overlay = document.getElementById('overlay');
+    overlay.style.display = 'none';
+
+    document.body.classList.remove('overlay-open');
+    showHeader();
+
+    if (overlayHls) {
+        overlayHls.destroy();
+        overlayHls = null;
+    }
+
+    overlayVideoContainer.pause();
+    overlayVideoContainer.src = '';
+    document.body.style.overflow = 'auto';
+}
+
+/**
+ * Enhanced playVideo with auto-detection support.
+ * @param {number} id - The video ID.
+ */
+function playVideo(id) {
+    if (!id) {
+        id = currentVideo;
+    }
+    // Use null to trigger auto-detection in openVideoOverlay
+    openVideoOverlay(id, null);
+}
+
+// ==============================
+// UI HELPER FUNCTIONS
+// ==============================
+
+/**
+ * Hides the main header (e.g., when playing video fullscreen).
+ */
+function hideHeader() {
+    const header = document.querySelector('.main_header');
+    if (header) {
+        header.style.transform = 'translateY(-100%)';
+        header.style.opacity = '0';
+        header.style.transition = 'transform 0.3s ease-in-out, opacity 0.3s ease-in-out';
+    }
+}
+
+/**
+ * Shows the main header again.
+ */
+function showHeader() {
+    const header = document.querySelector('.main_header');
+    if (header) {
+        header.style.transform = 'translateY(0)';
+        header.style.opacity = '1';
+        header.style.transition = 'transform 0.3s ease-in-out, opacity 0.3s ease-in-out';
+    }
+}
+
+// ==============================
+// SCROLL INDICATOR FUNCTIONS
+// ==============================
 
 /**
  * Proofs if a container is scrollable and add then the CSS class
@@ -311,113 +551,9 @@ function updateAllScrollIndicators() {
     });
 }
 
-/**
- * Loads a video in the overlay using HLS.js.
- * @param {number} id - The video ID.
- * @param {string} resolution - The desired resolution.
- */
-function loadVideoInOverlay(id, resolution) {
-    if (overlayHls) {
-        overlayHls.destroy();
-    }
-
-    overlayHls = new Hls({
-        xhrSetup: function (xhr) {
-            xhr.withCredentials = true
-        }
-    });
-
-    overlayHls.loadSource(`${API_BASE_URL}${URL_TO_INDEX_M3U8(id, resolution)}`);
-    overlayHls.attachMedia(overlayVideoContainer);
-
-    overlayHls.on(Hls.Events.MANIFEST_PARSED, () => {
-        overlayVideoContainer.play().catch(() => {
-            console.log("User interaction required to start overlay playback");
-        });
-    });
-
-    overlayHls.on(Hls.Events.ERROR, (event, data) => {
-        console.error("Overlay HLS error:", data);
-    });
-}
-
-/**
- * Opens the overlay player and starts playback.
- * @param {number} videoId - The video ID.
- * @param {string} resolution - The resolution to play.
- */
-function openVideoOverlay(videoId, resolution) {
-    const video = VIDEOS.find(video => video.id == videoId);
-    if (!video) return;
-
-    hideHeader();
-    const overlay = document.getElementById('overlay');
-    overlay.style.display = 'flex';
-    document.body.classList.add('overlay-open');
-    document.getElementById('overlayTitle').innerHTML = video.title;
-    document.getElementById('setResolution').value = resolution;
-    currentResolution = resolution;
-    loadVideoInOverlay(videoId, resolution);
-    document.body.style.overflow = 'hidden';
-
-}
-
-/**
- * Closes the overlay video player and resets the UI.
- */
-function closeVideoOverlay() {
-    const overlay = document.getElementById('overlay');
-    overlay.style.display = 'none';
-
-    document.body.classList.remove('overlay-open');
-
-    showHeader();
-
-    if (overlayHls) {
-        overlayHls.destroy();
-        overlayHls = null;
-    }
-
-    overlayVideoContainer.pause();
-    overlayVideoContainer.src = '';
-
-    document.body.style.overflow = 'auto';
-}
-
-/**
- * Opens the video overlay for the given video.
- * @param {number} id - The video ID.
- */
-function playVideo(id) {
-    if (!id) {
-        id = currentVideo;
-    }
-    openVideoOverlay(id, currentResolution);
-}
-
-/**
- * Hides the main header (e.g., when playing video fullscreen).
- */
-function hideHeader() {
-    const header = document.querySelector('.main_header');
-    if (header) {
-        header.style.transform = 'translateY(-100%)';
-        header.style.opacity = '0';
-        header.style.transition = 'transform 0.3s ease-in-out, opacity 0.3s ease-in-out';
-    }
-}
-
-/**
- * Shows the main header again.
- */
-function showHeader() {
-    const header = document.querySelector('.main_header');
-    if (header) {
-        header.style.transform = 'translateY(0)';
-        header.style.opacity = '1';
-        header.style.transition = 'transform 0.3s ease-in-out, opacity 0.3s ease-in-out';
-    }
-}
+// ==============================
+// EVENT LISTENERS
+// ==============================
 
 /**
  * Closes the overlay when the Escape key is pressed.
@@ -427,3 +563,4 @@ document.addEventListener('keydown', (event) => {
         closeVideoOverlay();
     }
 });
+

@@ -326,6 +326,7 @@ main {
     scroll-snap-type: x mandatory;
     -ms-overflow-style: none;
     scrollbar-width: none;
+    margin-bottom: 48px;
 }
 
 .video_list ul::-webkit-scrollbar {
